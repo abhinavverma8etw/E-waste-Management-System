@@ -28,7 +28,7 @@
     signOut, updateProfile
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
   import {
-    getFirestore, doc, getDoc, setDoc, updateDoc,
+    getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc,
     collection, getDocs, addDoc, query, where, orderBy, limit,
     serverTimestamp, increment, arrayUnion
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
@@ -54,7 +54,7 @@ const firebaseConfig = {
     auth, db, googleProvider,
     createUserWithEmailAndPassword, signInWithEmailAndPassword,
     signInWithPopup, signOut, updateProfile, onAuthStateChanged,
-    doc, getDoc, setDoc, updateDoc, collection, getDocs,
+    doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs,
     addDoc, query, where, orderBy, limit, serverTimestamp,
     increment, arrayUnion
   };
@@ -1561,6 +1561,18 @@ input:focus,select:focus,textarea:focus{
 /* ── Admin card rows ── */
 #admin-list .card{transition:border-color .25s,box-shadow .25s,transform .25s;}
 #admin-list .card:hover{transform:translateX(4px);}
+.admin-tab{background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;padding:10px 20px;cursor:pointer;transition:all .2s;margin-bottom:-1px;}
+.admin-tab.active{color:var(--warn);border-bottom-color:var(--warn);}
+.admin-tab:hover:not(.active){color:var(--fg);}
+.admin-action-btn{background:none;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.06em;padding:5px 10px;cursor:pointer;transition:all .2s;}
+.admin-action-btn:hover{border-color:var(--border2);color:var(--fg);}
+.admin-action-btn.edit:hover{border-color:var(--warn);color:var(--warn);}
+.admin-action-btn.danger:hover{border-color:var(--danger);color:var(--danger);}
+#modal-edit-pickup[style*="flex"],#modal-confirm-delete[style*="flex"]{display:flex!important;}
+.modal-fg{margin-bottom:14px;}
+.modal-fg label{display:block;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;color:var(--muted);margin-bottom:6px;text-transform:uppercase;}
+.modal-fg input,.modal-fg select,.modal-fg textarea{width:100%;background:var(--dark2);border:1px solid var(--border);border-radius:8px;color:var(--fg);font-family:'IBM Plex Mono',monospace;font-size:12px;padding:10px 14px;box-sizing:border-box;}
+.modal-fg textarea{resize:vertical;min-height:72px;}
 
 /* ── Dashboard header ── */
 #dash-inner [style*="border-radius:16px"]:first-child{
@@ -3079,7 +3091,7 @@ button:focus-visible{outline-offset:4px;}
 
             <!-- Photo upload -->
             <div class="fg" id="fg-photo" style="display:none">
-              <label>Device Photo <span style="font-family:'Outfit',sans-serif;color:var(--muted);font-size:11px;text-transform:none;letter-spacing:0">(optional)</span></label>
+              <label>Device Photo <span style="font-family:'Outfit',sans-serif;color:var(--danger);font-size:11px;text-transform:none;letter-spacing:0">*required</span></label>
               <div id="photo-drop" onclick="document.getElementById('f-photo').click()" class="photo-drop">
                 <input type="file" id="f-photo" accept="image/*" style="display:none" onchange="handlePhotoChange(event)"/>
                 <div id="photo-placeholder" class="photo-placeholder">
@@ -3117,7 +3129,10 @@ button:focus-visible{outline-offset:4px;}
             <div class="submit-section-label"><span class="submit-sec-num">02</span> Contact Details</div>
             <div class="fg">
               <label>Phone Number</label>
-              <input type="tel" inputmode="numeric" autocomplete="tel" id="f-phone" placeholder="+91 98765 43210" pattern="[0-9+\s\-()]*" oninput="updateStepPills(2)"/>
+              <div style="display:flex;align-items:stretch;gap:0">
+                <div style="background:rgba(255,255,255,.06);border:1px solid var(--border);border-right:none;border-radius:8px 0 0 8px;padding:0 14px;display:flex;align-items:center;font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--muted2);white-space:nowrap;letter-spacing:.04em">+91</div>
+                <input type="tel" inputmode="numeric" autocomplete="tel" id="f-phone" placeholder="98765 43210" maxlength="10" style="border-radius:0 8px 8px 0;flex:1" oninput="this.value=this.value.replace(/\D/g,'').slice(0,10);updateStepPills(2)"/>
+              </div>
             </div>
           </div>
 
@@ -3273,6 +3288,7 @@ button:focus-visible{outline-offset:4px;}
 
 <!-- ══════════════════ ADMIN ══════════════════ -->
 <div id="view-admin" class="view">
+  <!-- Password gate -->
   <div id="admin-login" style="max-width:380px;margin:100px auto;padding:0 28px">
     <div class="card anim" style="padding:32px;border-color:rgba(255,179,0,.35)">
       <div style="text-align:center;margin-bottom:20px">
@@ -3280,19 +3296,63 @@ button:focus-visible{outline-offset:4px;}
         <div class="disp" style="font-size:36px;color:var(--warn)">ADMIN ACCESS</div>
       </div>
       <div class="fg"><label>Admin Password</label><input type="password" id="admin-pwd" placeholder="••••••••" onkeydown="if(event.key==='Enter')adminLogin()"/></div>
-      <p class="mono" style="font-size:9px;color:var(--muted);margin:8px 0 18px;letter-spacing:.06em">Demo hint: admin123</p>
-      <button class="btn btn-g" style="width:100%" onclick="adminLogin()">Enter Panel →</button>
+      <button class="btn btn-g" style="width:100%;margin-top:8px" onclick="adminLogin()">Enter Panel →</button>
     </div>
   </div>
-  <div id="admin-panel" style="display:none;max-width:1100px;margin:44px auto;padding:0 28px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:36px;flex-wrap:wrap;gap:14px">
+
+  <!-- Main panel -->
+  <div id="admin-panel" style="display:none;max-width:1100px;margin:44px auto;padding:0 28px 60px">
+
+    <!-- Header -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:28px;flex-wrap:wrap;gap:14px">
       <div>
         <div class="tag" style="border-color:rgba(255,179,0,.4);color:var(--warn)">⚙ Admin Panel</div>
-        <h2 class="disp" style="font-size:52px">ALL PICKUPS</h2>
+        <h2 class="disp" style="font-size:48px;margin-top:4px">CONTROL CENTRE</h2>
       </div>
-      <button class="btn btn-ghost" onclick="loadAdmin()">↻ Refresh</button>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-ghost" onclick="loadAdminTab(adminActiveTab)">↻ Refresh</button>
+      </div>
     </div>
-    <div id="admin-list"></div>
+
+    <!-- Stats bar -->
+    <div id="admin-stats-bar" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:28px"></div>
+
+    <!-- Tabs -->
+    <div style="display:flex;gap:0;margin-bottom:24px;border-bottom:1px solid var(--border)">
+      <button id="atab-pickups" class="admin-tab active" onclick="loadAdminTab('pickups')">📦 Pickups</button>
+      <button id="atab-users"   class="admin-tab"        onclick="loadAdminTab('users')">👥 Users</button>
+    </div>
+
+    <!-- Tab content -->
+    <div id="admin-content"></div>
+  </div>
+</div>
+
+<!-- ── ADMIN MODALS ── -->
+
+<!-- Edit Pickup Modal -->
+<div id="modal-edit-pickup" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:20px">
+  <div class="card" style="width:100%;max-width:520px;max-height:90vh;overflow-y:auto;padding:32px;border-color:rgba(255,179,0,.3);position:relative">
+    <button onclick="closeModal('modal-edit-pickup')" style="position:absolute;top:16px;right:16px;background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;line-height:1">✕</button>
+    <div class="disp" style="font-size:28px;margin-bottom:20px;color:var(--warn)">EDIT PICKUP</div>
+    <div id="edit-pickup-form"></div>
+    <div style="display:flex;gap:10px;margin-top:20px">
+      <button class="btn btn-g" style="flex:1" onclick="saveEditPickup()">Save Changes →</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-edit-pickup')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm Delete Modal -->
+<div id="modal-confirm-delete" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:20px">
+  <div class="card" style="width:100%;max-width:420px;padding:36px;border-color:rgba(239,83,80,.3);text-align:center">
+    <div style="font-size:40px;margin-bottom:12px" id="del-modal-icon">⚠️</div>
+    <div class="disp" style="font-size:28px;color:var(--danger);margin-bottom:10px">CONFIRM DELETE</div>
+    <p class="mono" id="del-modal-msg" style="font-size:11px;color:var(--muted);letter-spacing:.06em;line-height:1.7;margin-bottom:24px"></p>
+    <div style="display:flex;gap:10px;justify-content:center">
+      <button class="btn" id="del-modal-confirm-btn" style="background:var(--danger);color:#fff;border:none;padding:12px 28px">Yes, Delete</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-confirm-delete')">Cancel</button>
+    </div>
   </div>
 </div>
 
@@ -3433,15 +3493,20 @@ async function saveStats(s){
 
 // ── FEED (Firestore collection: feed) ──
 async function getFeed(){
-  const {db,collection,getDocs,query,orderBy,limit}=await _fb();
-  const snap=await getDocs(query(collection(db,'feed'),orderBy('createdAt','desc'),limit(30)));
-  return snap.docs.map(d=>d.data());
+  const {db,collection,getDocs}=await _fb();
+  const snap=await getDocs(collection(db,'feed'));
+  return snap.docs
+    .map(d=>d.data())
+    .sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt))
+    .slice(0,30);
 }
 
 async function getLB(){
-  const {db,collection,getDocs,query,orderBy}=await _fb();
-  const snap=await getDocs(query(collection(db,'leaderboard'),orderBy('points','desc')));
-  return snap.docs.map(d=>d.data());
+  const {db,collection,getDocs}=await _fb();
+  const snap=await getDocs(collection(db,'leaderboard'));
+  return snap.docs
+    .map(d=>d.data())
+    .sort((a,b)=>b.points-a.points);
 }
 
 // ── DB: REGISTER (Email/Password) ──
@@ -3523,9 +3588,11 @@ async function dbGetUser(uid){
 
 // ── DB: GET PICKUPS ──
 async function dbGetPickups(uid){
-  const {db,collection,getDocs,query,where,orderBy}=await _fb();
-  const snap=await getDocs(query(collection(db,'pickups'),where('userId','==',uid),orderBy('createdAt','desc')));
-  return snap.docs.map(d=>({firestoreId:d.id,...d.data()}));
+  const {db,collection,getDocs,query,where}=await _fb();
+  const snap=await getDocs(query(collection(db,'pickups'),where('userId','==',uid)));
+  return snap.docs
+    .map(d=>({firestoreId:d.id,...d.data()}))
+    .sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
 }
 
 // ── DB: SUBMIT PICKUP ──
@@ -3554,11 +3621,23 @@ async function dbSubmitPickup(user,form){
 // ── DB: UPDATE STATUS (Admin) ──
 async function dbUpdateStatus(ownerUid,firestoreDocId,newStatus,pickupData){
   const {db,doc,updateDoc,getDoc,setDoc}=await _fb();
-  if(!db)return{ok:false};
   try{
     const ref=doc(db,'pickups',firestoreDocId);
-    await updateDoc(ref,{status:newStatus,updatedAt:now()});
-    if(newStatus==='Completed'){
+
+    // Read current pickup to check if reward was already given
+    const pickupSnap=await getDoc(ref);
+    const pickupDoc=pickupSnap.exists()?pickupSnap.data():{};
+    const alreadyRewarded=pickupDoc.rewardGiven===true;
+    const wasCompleted=pickupDoc.status==='Completed';
+
+    // Update status on the pickup
+    const pickupUpdate={status:newStatus,updatedAt:now()};
+
+    if(newStatus==='Completed' && !alreadyRewarded){
+      // First time completing — award points and mark rewardGiven
+      pickupUpdate.rewardGiven=true;
+      await updateDoc(ref,pickupUpdate);
+
       const uRef=doc(db,'users',ownerUid);
       const uSnap=await getDoc(uRef);
       if(uSnap.exists()){
@@ -3575,17 +3654,27 @@ async function dbUpdateStatus(ownerUid,firestoreDocId,newStatus,pickupData){
         await saveStats(s);
         if(currentUser&&currentUser.uid===ownerUid){currentUser.points=newPts;currentUser.totalDevices=newDev;currentUser.totalPickups=newPkp;}
       }
+    } else {
+      // Just update status, no reward change
+      await updateDoc(ref,pickupUpdate);
     }
+
     return{ok:true};
   }catch(e){return{ok:false,error:e.message};}
 }
 
 // ── DB: GET ALL PICKUPS (Admin) ──
 async function dbGetAllPickups(){
-  const {db,collection,getDocs,query,orderBy}=await _fb();
-  if(!db)return[];
-  const snap=await getDocs(query(collection(db,'pickups'),orderBy('createdAt','desc')));
-  return snap.docs.map(d=>({firestoreId:d.id,...d.data()}));
+  try{
+    const {db,collection,getDocs}=await _fb();
+    const snap=await getDocs(collection(db,'pickups'));
+    return snap.docs
+      .map(d=>({firestoreId:d.id,...d.data()}))
+      .sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+  }catch(e){
+    console.error('dbGetAllPickups error:',e);
+    return{error:e.message};
+  }
 }
 
 // ── SESSION ──
@@ -3700,6 +3789,7 @@ function showView(v, _originOverride){
   const nextEl = document.getElementById('view-'+v);
   if(!nextEl) return;
   if(v==='submit' && !currentUser){ showView('auth'); return; }
+  if(v==='auth' && currentUser){ showView('dashboard'); return; }
 
   const currentEl = document.querySelector('.view.active');
   if(currentEl === nextEl) return;
@@ -3713,6 +3803,11 @@ function showView(v, _originOverride){
   if(v==='track'&&currentUser)     loadTrack();
   if(v==='leaderboard')            loadLeaderboard();
   if(v==='submit')                 renderSubmitForm();
+  if(v==='admin'){
+    document.getElementById('admin-login').style.display='block';
+    document.getElementById('admin-panel').style.display='none';
+    document.getElementById('admin-pwd').value='';
+  }
 
   renderNav(v);
   footerEl.classList.toggle('no-gap', hideFooter.includes(v));
@@ -4297,6 +4392,9 @@ function handlePhotoChange(e){
     document.getElementById('photo-preview').style.display='flex';
     document.getElementById('photo-drop').style.borderColor='var(--g)';
     document.getElementById('photo-drop').style.background='rgba(57,211,83,.04)';
+    // Clear any photo error message
+    const fgPhoto=document.getElementById('fg-photo');
+    if(fgPhoto){const old=fgPhoto.querySelector('.photo-err-msg');if(old)old.remove();}
     syncSummary();
   };
   reader.readAsDataURL(file);
@@ -4384,7 +4482,7 @@ async function submitPickup(){
     model:(document.getElementById('f-model')||{}).value.trim(),
     photo:devicePhotoBase64||null,
     qty:document.getElementById('f-qty').value,
-    phone:document.getElementById('f-phone').value.trim(),
+    phone:'+91'+document.getElementById('f-phone').value.replace(/\D/g,'').slice(0,10),
     address:document.getElementById('f-address').value.trim(),
     city:document.getElementById('f-city').value.trim(),
     pincode:document.getElementById('f-pincode').value.trim(),
@@ -4399,14 +4497,32 @@ async function submitPickup(){
     errors.push('Device type');
   } else { setFieldOk('f-device'); }
 
-  const phoneClean=form.phone.replace(/[\s\-().+]/g,'');
-  if(!form.phone){
+  const phoneDigits=document.getElementById('f-phone').value.replace(/\D/g,'');
+  if(!phoneDigits){
     setFieldError('f-phone','Phone number is required');
     errors.push('Phone number');
-  } else if(phoneClean.length<10||!/^\d+$/.test(phoneClean)){
-    setFieldError('f-phone','Enter a valid 10-digit mobile number');
-    errors.push('Valid phone number');
+  } else if(phoneDigits.length!==10){
+    setFieldError('f-phone','Enter exactly 10 digits');
+    errors.push('Valid 10-digit phone number');
   } else { setFieldOk('f-phone'); }
+
+  // Photo — always mandatory once device is selected
+  if(!devicePhotoBase64){
+    const drop=document.getElementById('photo-drop');
+    if(drop){drop.style.borderColor='var(--danger)';drop.style.background='rgba(239,83,80,.06)';}
+    const fgPhoto=document.getElementById('fg-photo');
+    if(fgPhoto){
+      let errMsg=fgPhoto.querySelector('.photo-err-msg');
+      if(!errMsg){errMsg=document.createElement('div');errMsg.className='photo-err-msg field-err-msg';fgPhoto.appendChild(errMsg);}
+      errMsg.textContent='Device photo is required';
+    }
+    errors.push('Device photo (required)');
+  } else {
+    const drop=document.getElementById('photo-drop');
+    if(drop){drop.style.borderColor='var(--g)';drop.style.background='rgba(57,211,83,.04)';}
+    const fgPhoto=document.getElementById('fg-photo');
+    if(fgPhoto){const old=fgPhoto.querySelector('.photo-err-msg');if(old)old.remove();}
+  }
 
   if(!form.address){
     setFieldError('f-address','Pickup address is required');
@@ -4590,51 +4706,252 @@ async function loadLeaderboard(){
   list.innerHTML=podiumHTML+restHTML;
 }
 
+// ── ADMIN ──
+const ADMIN_PASSWORD = 'e/cycle@india';
+let adminActiveTab = 'pickups';
+let _editPickupData = null; // holds pickup being edited
+
 function adminLogin(){
-  const pwd=document.getElementById('admin-pwd').value;
-  if(pwd==='admin123'){
-    document.getElementById('admin-login').style.display='none';
-    document.getElementById('admin-panel').style.display='block';
-    loadAdmin();
-  } else showToast('Wrong password','error');
+  const pwd = document.getElementById('admin-pwd').value;
+  if(pwd === ADMIN_PASSWORD){
+    document.getElementById('admin-login').style.display = 'none';
+    document.getElementById('admin-panel').style.display = 'block';
+    loadAdminTab('pickups');
+  } else {
+    showToast('Wrong password', 'error');
+  }
 }
+
+function loadAdminTab(tab){
+  adminActiveTab = tab;
+  document.querySelectorAll('.admin-tab').forEach(b => b.classList.remove('active'));
+  const tabEl = document.getElementById('atab-'+tab);
+  if(tabEl) tabEl.classList.add('active');
+  if(tab==='pickups') loadAdmin();
+  if(tab==='users')   loadAdminUsers();
+}
+
+// ── ADMIN: PICKUPS TAB ──
 async function loadAdmin(){
-  const all=await dbGetAllPickups();
-  const list=document.getElementById('admin-list');
-  if(all.length===0){list.innerHTML=`<div class="card" style="text-align:center;padding:60px"><div style="font-size:40px;margin-bottom:10px">📭</div><div class="mono" style="font-size:11px;color:var(--muted)">No pickups in the system yet.</div></div>`;return;}
-  // Summary stats
+  const content = document.getElementById('admin-content');
+  content.innerHTML = `<div id="admin-list"><div class="card" style="text-align:center;padding:40px"><div class="spinner" style="margin:0 auto"></div><div class="mono" style="font-size:11px;color:var(--muted);margin-top:14px;letter-spacing:.06em">Loading pickups…</div></div></div>`;
+  const result = await dbGetAllPickups();
+  if(result && result.error){
+    content.innerHTML = `<div class="card" style="text-align:center;padding:40px;border-color:rgba(239,83,80,.3)">
+      <div style="font-size:32px;margin-bottom:10px">⚠️</div>
+      <div class="mono" style="font-size:11px;color:var(--danger);margin-bottom:8px">Firestore Error</div>
+      <div class="mono" style="font-size:10px;color:var(--muted)">${result.error}</div></div>`;
+    return;
+  }
+  const all = result;
+  // Stats bar
   const byStatus={};STATUS_FLOW.forEach(s=>byStatus[s]=all.filter(p=>p.status===s).length);
-  const summary=`<div class="grid4" style="margin-bottom:24px">
-    ${STATUS_FLOW.map(s=>`<div class="card" style="text-align:center;padding:14px"><div style="font-size:22px;font-weight:700;color:${STATUS_COLOR[s]}">${byStatus[s]}</div><div class="mono" style="font-size:9px;color:var(--muted);margin-top:4px;letter-spacing:.08em">${s.toUpperCase()}</div></div>`).join('')}
-  </div>`;
-  list.innerHTML=summary+all.map(p=>{
-    const actionBtns=STATUS_FLOW.filter(s=>s!==p.status).map(s=>`<button class="status-action" style="color:${STATUS_COLOR[s]};border:1px solid ${STATUS_COLOR[s]}40" onclick="adminUpdateStatus('${p.userId}','${p.firestoreId}','${s}',${JSON.stringify(JSON.stringify({pts:p.pts,qty:p.qty}))})">→ ${s}</button>`).join('');
+  document.getElementById('admin-stats-bar').innerHTML =
+    STATUS_FLOW.map(s=>`<div class="card" style="text-align:center;padding:14px">
+      <div style="font-size:20px;font-weight:700;color:${STATUS_COLOR[s]}">${byStatus[s]}</div>
+      <div class="mono" style="font-size:8px;color:var(--muted);margin-top:4px;letter-spacing:.08em">${s.toUpperCase()}</div>
+    </div>`).join('');
+
+  if(all.length===0){
+    content.innerHTML=`<div class="card" style="text-align:center;padding:60px"><div style="font-size:40px;margin-bottom:10px">📭</div><div class="mono" style="font-size:11px;color:var(--muted)">No pickups yet.</div></div>`;
+    return;
+  }
+  content.innerHTML = `<div id="admin-list">${all.map(p => {
+    const pd = encodeURIComponent(JSON.stringify({pts:p.pts||0,qty:p.qty||1,kgEstimate:p.kgEstimate||0}));
+    const statusBtns = STATUS_FLOW.filter(s=>s!==p.status)
+      .map(s=>`<button class="status-action" style="color:${STATUS_COLOR[s]};border:1px solid ${STATUS_COLOR[s]}40" onclick="adminUpdateStatus('${p.userId}','${p.firestoreId}','${s}','${pd}')">→ ${s}</button>`).join('');
+    const pEnc = encodeURIComponent(JSON.stringify(p));
     return `<div class="card" id="aprow-${p.id}" style="margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px">
-        <div>
+        <div style="flex:1;min-width:0">
           <div style="display:flex;gap:10px;align-items:center;margin-bottom:5px;flex-wrap:wrap">
             <span class="mono" style="font-size:10px;color:var(--muted);letter-spacing:.06em">#${p.id}</span>
             <span style="font-weight:700">${p.userName}</span>
             <span style="color:var(--muted2);font-size:13px">— ${p.qty}× ${p.deviceLabel}</span>
           </div>
-          <div class="mono" style="font-size:10px;color:var(--muted)">${p.address}, ${p.city} · ${fmtDate(p.createdAt)}</div>
+          <div class="mono" style="font-size:10px;color:var(--muted)">${p.address}, ${p.city}${p.pincode?' · '+p.pincode:''} · ${fmtDate(p.createdAt)}</div>
           ${p.phone?`<div class="mono" style="font-size:9px;color:var(--muted);margin-top:2px">📞 ${p.phone}</div>`:''}
-          ${p.notes?`<div style="font-size:12px;color:var(--muted);margin-top:4px;font-style:italic;padding-left:8px;border-left:2px solid var(--border)">Note: ${p.notes}</div>`:''}
+          ${p.notes?`<div style="font-size:12px;color:var(--muted);margin-top:4px;font-style:italic;padding-left:8px;border-left:2px solid var(--border)">${p.notes}</div>`:''}
         </div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <span class="status-badge" style="color:${STATUS_COLOR[p.status]};background:${STATUS_COLOR[p.status]}18">${p.status}</span>
-          ${actionBtns}
+        <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end;flex-shrink:0">
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
+            <span class="status-badge" style="color:${STATUS_COLOR[p.status]};background:${STATUS_COLOR[p.status]}18">${p.status}</span>
+            <button class="admin-action-btn edit" onclick="openEditPickup('${encodeURIComponent(JSON.stringify(p))}')">✏ Edit</button>
+            <button class="admin-action-btn danger" onclick="confirmDeletePickup('${p.firestoreId}','${p.id}')">🗑 Delete</button>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">${statusBtns}</div>
         </div>
       </div>
     </div>`;
-  }).join('');
+  }).join('')}</div>`;
 }
-async function adminUpdateStatus(uid,firestoreDocId,status,pickupDataJson){
-  const pickupData=JSON.parse(pickupDataJson);
-  const r=await dbUpdateStatus(uid,firestoreDocId,status,pickupData);
-  if(r.ok){showToast(`Pickup → ${status}`);loadAdmin();}
-  else showToast('Update failed','error');
+
+async function adminUpdateStatus(uid,firestoreDocId,status,pickupDataEncoded){
+  try{
+    const pickupData=JSON.parse(decodeURIComponent(pickupDataEncoded));
+    const r=await dbUpdateStatus(uid,firestoreDocId,status,pickupData);
+    if(r.ok){showToast(`Status updated → ${status}`);loadAdmin();}
+    else showToast(r.error||'Update failed','error');
+  }catch(e){showToast('Error: '+e.message,'error');}
 }
+
+// ── EDIT PICKUP ──
+function openEditPickup(pEncoded){
+  const p = JSON.parse(decodeURIComponent(pEncoded));
+  _editPickupData = p;
+  document.getElementById('edit-pickup-form').innerHTML = `
+    <div class="modal-fg"><label>Device Label</label><input id="ep-deviceLabel" value="${p.deviceLabel||''}"/></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="modal-fg"><label>Brand</label><input id="ep-brand" value="${p.brand||''}"/></div>
+      <div class="modal-fg"><label>Model</label><input id="ep-model" value="${p.model||''}"/></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="modal-fg"><label>Quantity</label><input id="ep-qty" type="number" min="1" value="${p.qty||1}"/></div>
+      <div class="modal-fg"><label>Points</label><input id="ep-pts" type="number" min="0" value="${p.pts||0}"/></div>
+    </div>
+    <div class="modal-fg"><label>Phone</label><input id="ep-phone" value="${p.phone||''}"/></div>
+    <div class="modal-fg"><label>Address</label><input id="ep-address" value="${p.address||''}"/></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+      <div class="modal-fg"><label>City</label><input id="ep-city" value="${p.city||''}"/></div>
+      <div class="modal-fg"><label>Pincode</label><input id="ep-pincode" value="${p.pincode||''}"/></div>
+      <div class="modal-fg"><label>State</label><input id="ep-state" value="${p.state||''}"/></div>
+    </div>
+    <div class="modal-fg"><label>Notes</label><textarea id="ep-notes">${p.notes||''}</textarea></div>
+    <div class="modal-fg"><label>Status</label><select id="ep-status">
+      ${STATUS_FLOW.map(s=>`<option value="${s}"${p.status===s?' selected':''}>${s}</option>`).join('')}
+    </select></div>`;
+  document.getElementById('modal-edit-pickup').style.display='flex';
+}
+
+async function saveEditPickup(){
+  if(!_editPickupData)return;
+  const {db,doc,updateDoc}=await _fb();
+  const updates={
+    deviceLabel: document.getElementById('ep-deviceLabel').value.trim(),
+    brand:       document.getElementById('ep-brand').value.trim(),
+    model:       document.getElementById('ep-model').value.trim(),
+    qty:         parseInt(document.getElementById('ep-qty').value)||1,
+    pts:         parseInt(document.getElementById('ep-pts').value)||0,
+    phone:       document.getElementById('ep-phone').value.trim(),
+    address:     document.getElementById('ep-address').value.trim(),
+    city:        document.getElementById('ep-city').value.trim(),
+    pincode:     document.getElementById('ep-pincode').value.trim(),
+    state:       document.getElementById('ep-state').value.trim(),
+    notes:       document.getElementById('ep-notes').value.trim(),
+    status:      document.getElementById('ep-status').value,
+    updatedAt:   now()
+  };
+  try{
+    await updateDoc(doc(db,'pickups',_editPickupData.firestoreId),updates);
+    closeModal('modal-edit-pickup');
+    showToast('Pickup updated ✓');
+    loadAdmin();
+  }catch(e){showToast('Error: '+e.message,'error');}
+}
+
+// ── DELETE PICKUP ──
+function confirmDeletePickup(firestoreId,shortId){
+  document.getElementById('del-modal-icon').textContent='🗑';
+  document.getElementById('del-modal-msg').textContent=`Delete pickup #${shortId}? This cannot be undone.`;
+  const btn=document.getElementById('del-modal-confirm-btn');
+  btn.onclick=()=>doDeletePickup(firestoreId);
+  document.getElementById('modal-confirm-delete').style.display='flex';
+}
+async function doDeletePickup(firestoreId){
+  const {db,doc,deleteDoc}=await _fb();
+  try{
+    await deleteDoc(doc(db,'pickups',firestoreId));
+    closeModal('modal-confirm-delete');
+    showToast('Pickup deleted');
+    loadAdmin();
+  }catch(e){showToast('Error: '+e.message,'error');}
+}
+
+// ── ADMIN: USERS TAB ──
+async function loadAdminUsers(){
+  const content=document.getElementById('admin-content');
+  content.innerHTML=`<div class="card" style="text-align:center;padding:40px"><div class="spinner" style="margin:0 auto"></div><div class="mono" style="font-size:11px;color:var(--muted);margin-top:14px;letter-spacing:.06em">Loading users…</div></div>`;
+  try{
+    const {db,collection,getDocs}=await _fb();
+    const snap=await getDocs(collection(db,'users'));
+    const users=snap.docs.map(d=>({firestoreId:d.id,...d.data()}))
+      .sort((a,b)=>(b.points||0)-(a.points||0));
+    // Stats bar
+    document.getElementById('admin-stats-bar').innerHTML=`
+      <div class="card" style="text-align:center;padding:14px"><div style="font-size:20px;font-weight:700;color:var(--g)">${users.length}</div><div class="mono" style="font-size:8px;color:var(--muted);margin-top:4px;letter-spacing:.08em">TOTAL USERS</div></div>
+      <div class="card" style="text-align:center;padding:14px"><div style="font-size:20px;font-weight:700;color:var(--g)">${users.reduce((s,u)=>s+(u.points||0),0)}</div><div class="mono" style="font-size:8px;color:var(--muted);margin-top:4px;letter-spacing:.08em">TOTAL POINTS</div></div>
+      <div class="card" style="text-align:center;padding:14px"><div style="font-size:20px;font-weight:700;color:var(--g)">${users.reduce((s,u)=>s+(u.totalDevices||0),0)}</div><div class="mono" style="font-size:8px;color:var(--muted);margin-top:4px;letter-spacing:.08em">DEVICES RECYCLED</div></div>
+      <div class="card" style="text-align:center;padding:14px"><div style="font-size:20px;font-weight:700;color:var(--g)">${users.reduce((s,u)=>s+(u.totalPickups||0),0)}</div><div class="mono" style="font-size:8px;color:var(--muted);margin-top:4px;letter-spacing:.08em">TOTAL PICKUPS</div></div>`;
+    if(users.length===0){
+      content.innerHTML=`<div class="card" style="text-align:center;padding:60px"><div style="font-size:40px;margin-bottom:10px">👥</div><div class="mono" style="font-size:11px;color:var(--muted)">No users yet.</div></div>`;
+      return;
+    }
+    content.innerHTML=users.map((u,i)=>`
+      <div class="card" style="margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+        <div style="display:flex;align-items:center;gap:14px;flex:1;min-width:0">
+          <div style="width:38px;height:38px;border-radius:50%;background:var(--dark2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:15px;color:var(--g);font-weight:700;flex-shrink:0">${(u.name||'?')[0].toUpperCase()}</div>
+          <div style="min-width:0">
+            <div style="font-weight:700;font-size:14px">${u.name||'—'}</div>
+            <div class="mono" style="font-size:9px;color:var(--muted);letter-spacing:.04em">${u.email||'—'} · Joined ${fmtDate(u.joinedAt)}</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:16px;flex-shrink:0">
+          <div style="text-align:center">
+            <div style="font-weight:700;font-size:16px;color:var(--g)">${u.points||0}</div>
+            <div class="mono" style="font-size:8px;color:var(--muted);letter-spacing:.06em">PTS</div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-weight:700;font-size:16px">${u.totalDevices||0}</div>
+            <div class="mono" style="font-size:8px;color:var(--muted);letter-spacing:.06em">DEVICES</div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-weight:700;font-size:16px">${u.totalPickups||0}</div>
+            <div class="mono" style="font-size:8px;color:var(--muted);letter-spacing:.06em">PICKUPS</div>
+          </div>
+          <button class="admin-action-btn danger" onclick="confirmDeleteUser('${u.firestoreId}','${(u.name||'').replace(/'/g,'')}')">🗑 Delete</button>
+        </div>
+      </div>`).join('');
+  }catch(e){
+    content.innerHTML=`<div class="card" style="text-align:center;padding:40px;border-color:rgba(239,83,80,.3)"><div style="font-size:32px;margin-bottom:10px">⚠️</div><div class="mono" style="font-size:11px;color:var(--danger)">${e.message}</div></div>`;
+  }
+}
+
+// ── DELETE USER ──
+function confirmDeleteUser(uid,name){
+  document.getElementById('del-modal-icon').textContent='👤';
+  document.getElementById('del-modal-msg').textContent=`Delete user "${name}" and all their data? This cannot be undone.`;
+  const btn=document.getElementById('del-modal-confirm-btn');
+  btn.onclick=()=>doDeleteUser(uid);
+  document.getElementById('modal-confirm-delete').style.display='flex';
+}
+async function doDeleteUser(uid){
+  const {db,doc,deleteDoc,collection,getDocs,query,where}=await _fb();
+  try{
+    // Delete user doc
+    await deleteDoc(doc(db,'users',uid));
+    // Delete leaderboard entry
+    await deleteDoc(doc(db,'leaderboard',uid));
+    // Delete all their pickups
+    const pickSnap=await getDocs(query(collection(db,'pickups'),where('userId','==',uid)));
+    await Promise.all(pickSnap.docs.map(d=>deleteDoc(d.ref)));
+    closeModal('modal-confirm-delete');
+    showToast('User deleted');
+    loadAdminUsers();
+  }catch(e){showToast('Error: '+e.message,'error');}
+}
+
+// ── MODAL UTILS ──
+function closeModal(id){
+  document.getElementById(id).style.display='none';
+  _editPickupData=null;
+}
+// Close modal on backdrop click
+document.addEventListener('click',e=>{
+  ['modal-edit-pickup','modal-confirm-delete'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el && e.target===el) closeModal(id);
+  });
+});
 
 // ── INIT ──
 renderNav('home');
